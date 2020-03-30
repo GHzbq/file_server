@@ -35,6 +35,7 @@ func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request
 	if request.Method == "GET" {
 		pictureDesc = request.FormValue("picture_name")
 	} else if request.Method == "POST" {
+		pictureDesc = request.PostFormValue("picture_name")
 		body, e := ioutil.ReadAll(request.Body)
 		if e != nil {
 			logs.Error("ioutil.ReadAll failed, error = %v", e.Error())
@@ -50,6 +51,7 @@ func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request
 	}
 
 	if pictureDesc == "" {
+		logs.Error("picture_name is nil")
 		io.WriteString(writer, "picture_name is nil")
 		return
 	}
@@ -59,6 +61,7 @@ func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request
 	fileName += "_" + strconv.FormatInt(count, 10)
 	filePath := imagePath + fileName
 	pictureURL := serverBase + "/get_picture?id=" + fileName
+	// pictureURL := "http://127.0.0.1:9653/get_picture?id=" + fileName
 	logs.Debug("filePath = %v, pictureUrl = %v", filePath, pictureURL)
 
 	file, e := os.Create(filePath)
