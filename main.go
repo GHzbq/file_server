@@ -19,7 +19,7 @@ func init() {
 func main() {
 	serveMux := http.NewServeMux()
 	serveMux.Handle("/upload_picture", http.HandlerFunc(handles.HandleNcPostUploadPicture))
-	serveMux.Handle("/get_picture", http.HandlerFunc(handles.HandleNcPostUploadPicture))
+	serveMux.Handle("/get_picture", http.HandlerFunc(handles.HandleNcGetGetPicture))
 	e := http.ListenAndServe(":9653", serveMux)
 	if e != nil {
 		logs.Error("http.ListenAndServe failed, error = %v", e.Error())
