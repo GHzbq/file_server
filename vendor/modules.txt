@@ -1,0 +1,6 @@
+# github.com/astaxie/beego v1.12.1
+## explicit
+github.com/astaxie/beego/logs
+# github.com/shiena/ansicolor v0.0.0-20151119151921-a422bbe96644
+## explicit
+github.com/shiena/ansicolor

@@ -1,0 +1,24 @@
+{
+  "FuncCall":true,
+  "FuncCallDepth":3,
+  "Async":false,
+  "AsyncChan":1000,
+  "Adapters":[
+    {
+      "Name":"file",
+      "FileName" : "/home/work/log/file_server/server.log",
+      "Level": 7,
+      "MaxLines" : 0,
+      "MaxSize" : 0,
+      "Daily" : true,
+      "MaxDays" : 7,
+      "Rotate" : true,
+      "Perm":"0755",
+      "RotatePerm":"0644"
+    },
+    {
+      "Name":"console",
+      "Level": 7
+    }
+  ]
+}
