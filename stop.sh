@@ -1,3 +1,3 @@
-#!/usr/bin/bash
+#!/bin/sh
 
 pkill -9 file_server
