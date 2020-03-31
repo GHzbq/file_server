@@ -2,8 +2,8 @@ package handles
 
 import (
 	"github.com/astaxie/beego/logs"
+	imgType "github.com/shamsher31/goimgtype"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -20,6 +20,36 @@ var (
 	atomicCount int64
 )
 
+func init() {
+	// 存储图片的目录是否存在，不存在就创建，存在不做任何处理
+	ok, e := PathExists(imagePath)
+	if e != nil {
+		logs.Error("unknown error, error = %v", e.Error())
+		return
+	}
+	if ok == false {
+		// 目录不存在，创建之
+		e := os.MkdirAll(imagePath, os.ModePerm)
+		if e != nil {
+			logs.Error("os.MkdirAll failed, error = %v", e.Error())
+			return
+		}
+		logs.Debug("os.MkdirAll succeed, path = %v", imagePath)
+	}
+}
+
+// PathExists 判断文件夹是否存在
+func PathExists(path string) (bool, error) {
+	_, err := os.Stat(path)
+	if err == nil {
+		return true, nil
+	}
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	return false, err
+}
+
 // HandleNcPostUploadPicture 处理上传图片逻辑
 func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request) {
 	// 解决跨域问题
@@ -28,57 +58,57 @@ func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request
 	e := request.ParseForm()
 	if e != nil {
 		logs.Error("request.ParseForm failed, error = %v", e.Error())
-		io.WriteString(writer, "parse form failed.")
+		http.Error(writer, "parse form failed", http.StatusInternalServerError)
 		return
 	}
-	var pictureDesc string
-	if request.Method == "GET" {
-		pictureDesc = request.FormValue("picture_name")
-	} else if request.Method == "POST" {
-		pictureDesc = request.PostFormValue("picture_name")
-		body, e := ioutil.ReadAll(request.Body)
+	if request.Method == "POST" {
+		f, h, e := request.FormFile("filename")
 		if e != nil {
-			logs.Error("ioutil.ReadAll failed, error = %v", e.Error())
-			io.WriteString(writer, "read body failed")
+			logs.Error("request.FormFile failed, error = %v", e.Error())
+			http.Error(writer, "request.FormFile failed", http.StatusInternalServerError) // 500
 			return
 		}
-		defer request.Body.Close()
-		logs.Debug("body = %v", string(body))
+		defer f.Close()
+		// 限定文件格式
+		fileType, e := imgType.Get(h.Filename)
+		if e != nil {
+			logs.Error("not image format")
+			http.Error(writer, "not image format", http.StatusBadRequest)
+			return
+		}
 
+		count := atomic.AddInt64(&atomicCount, 1)
+		fileName := time.Now().Format("20060102150405")
+		fileName += "_" + strconv.FormatInt(count, 10) + fileType
+		filePath := imagePath + fileName
+		fileURL := serverBase + "/get_picture?id=" + fileName
+		logs.Debug("filePath = %v, fileURL = %v", filePath, fileURL)
+
+		file, e := os.Create(filePath)
+		if e != nil {
+			logs.Error("os.Create failed, error = %v", e.Error())
+			http.Error(writer, "create file failed", http.StatusInternalServerError)
+			return
+		}
+		defer file.Close()
+		_, e = io.Copy(file, f)
+		if e != nil {
+			logs.Error("io.Copy failed, error = %v", e.Error())
+			http.Error(writer, "write file failed", http.StatusInternalServerError)
+			return
+		}
+		_, e = io.WriteString(writer, fileURL)
+		if e != nil {
+			http.Error(writer, "create file failed", http.StatusInternalServerError)
+			return
+		}
+		http.Redirect(writer, request, fileURL, http.StatusFound) // 302
+		return
 	} else {
-		io.WriteString(writer, "unsupported method")
+		logs.Debug("upload method is unsupported")
+		http.Error(writer, "upload method is unsupported", http.StatusBadRequest) // 400
 		return
 	}
-
-	if pictureDesc == "" {
-		logs.Error("picture_name is nil")
-		io.WriteString(writer, "picture_name is nil")
-		return
-	}
-	logs.Debug("pictureDesc = %v", pictureDesc)
-	count := atomic.AddInt64(&atomicCount, 1)
-	fileName := time.Now().Format("20060102150405")
-	fileName += "_" + strconv.FormatInt(count, 10)
-	filePath := imagePath + fileName
-	pictureURL := serverBase + "/get_picture?id=" + fileName
-	// pictureURL := "http://127.0.0.1:9653/get_picture?id=" + fileName
-	logs.Debug("filePath = %v, pictureUrl = %v", filePath, pictureURL)
-
-	file, e := os.Create(filePath)
-	if e != nil {
-		logs.Error("os.Create failed, filePath = %v", filePath)
-		io.WriteString(writer, "create file failed")
-		return
-	}
-
-	_, e = file.WriteString(pictureDesc)
-	if e != nil {
-		logs.Error("file.WriteString failed, error = %v", e.Error())
-		io.WriteString(writer, "write file failed")
-		return
-	}
-
-	io.WriteString(writer, pictureURL)
 }
 
 // HandleNcGetGetPicture 获取图片
@@ -88,35 +118,35 @@ func HandleNcGetGetPicture(writer http.ResponseWriter, request *http.Request) {
 	e := request.ParseForm()
 	if e != nil {
 		logs.Error("request.ParseForm failed, error = %v", e.Error())
-		io.WriteString(writer, "parse form failed")
+		http.Error(writer, "parse form failed", http.StatusInternalServerError)
 		return
 	}
 	if request.Method == "GET" {
 		fileName := request.FormValue("id")
 		if fileName == "" {
-			io.WriteString(writer, "id is unset")
+			logs.Debug("id is unset")
+			http.Error(writer, "id is unset", http.StatusBadRequest)
 			return
 		}
 		filePath := imagePath + fileName
 		logs.Debug("filePath = %v", filePath)
 
-		file, e := os.OpenFile(filePath, os.O_RDONLY, 0666)
+		ok, e := PathExists(filePath)
 		if e != nil {
-			logs.Error("os.OpenFile failed, error = %v", e.Error())
-			io.WriteString(writer, "open file failed")
+			logs.Error("unknown error, error = %v", e.Error())
+			http.Error(writer, "unknown error", http.StatusInternalServerError)
 			return
 		}
-		defer file.Close()
-		b, e := ioutil.ReadAll(file)
-		if e != nil {
-			logs.Error("ioutil.ReadAll failed, error = %v", e.Error())
-			io.WriteString(writer, "read file failed")
-			return
+		if ok == false {
+			logs.Debug("file not exists, filePath = %v", filePath)
+			http.NotFound(writer, request)
 		}
-		logs.Debug("b = %v", string(b))
-		writer.Write(b)
+
+		writer.Header().Set("Content-Type", "image")
+		http.ServeFile(writer, request, imagePath)
 	} else {
-		io.WriteString(writer, "unsupported method")
+		logs.Debug("unsupported method, request.Method = %v", request.Method)
+		http.Error(writer, "unsupported method", http.StatusBadRequest)
 		return
 	}
 }

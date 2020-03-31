@@ -2,6 +2,7 @@ package main
 
 import (
 	"file_server/handles"
+	_ "file_server/handles"
 	"file_server/log"
 	"github.com/astaxie/beego/logs"
 	"net/http"
