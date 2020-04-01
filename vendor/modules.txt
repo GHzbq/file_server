@@ -1,12 +1,6 @@
 # github.com/astaxie/beego v1.12.1
 ## explicit
 github.com/astaxie/beego/logs
-# github.com/shamsher31/goimgext v1.0.0
-## explicit
-github.com/shamsher31/goimgext
-# github.com/shamsher31/goimgtype v1.0.0
-## explicit
-github.com/shamsher31/goimgtype
 # github.com/shiena/ansicolor v0.0.0-20151119151921-a422bbe96644
 ## explicit
 github.com/shiena/ansicolor
