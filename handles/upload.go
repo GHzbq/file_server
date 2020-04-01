@@ -2,23 +2,25 @@ package handles
 
 import (
 	"github.com/astaxie/beego/logs"
-	imgType "github.com/shamsher31/goimgtype"
 	"io"
 	"net/http"
 	"os"
+	"path"
 	"strconv"
+	"strings"
 	"sync/atomic"
 	"time"
 )
 
 const (
-	//serverBase = "http://47.102.208.185:9653"
-	serverBase = "http://127.0.0.1:9653"
+	serverBase = "http://47.102.208.185:9653"
+	// serverBase = "http://127.0.0.1:9653"
 	imagePath = "/home/zhangbaqing/all/project/file_server/img/"
 )
 
 var (
 	atomicCount int64
+	imgType 	map[string]string
 )
 
 func init() {
@@ -37,6 +39,25 @@ func init() {
 		}
 		logs.Debug("os.MkdirAll succeed, path = %v", imagePath)
 	}
+
+	mapImgType := make(map[string]string, 20)
+	mapImgType[".xbm"] = ".xbm"
+	mapImgType[".bmp"] = ".bmp"
+	mapImgType[".jpeg"] = ".jpeg"
+	mapImgType[".webp"] = ".webp"
+	mapImgType[".svgz"] = ".svgz"
+	mapImgType[".gif"] = ".gif"
+	mapImgType[".jpg"] = ".jpg"
+	mapImgType[".ico"] = ".ico"
+	mapImgType[".tiff"] = ".tiff"
+	mapImgType[".png"] = ".png"
+	mapImgType[".svg"] = ".svg"
+	mapImgType[".jfif"] = ".jfif"
+	mapImgType[".pjpeg"] = ".pjpeg"
+	mapImgType[".pjp"] = ".pjp"
+	mapImgType[".tif"] = ".tif"
+
+	imgType = mapImgType
 }
 
 // PathExists 判断文件夹是否存在
@@ -49,6 +70,13 @@ func PathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
+}
+
+// IsImgType 判断是否是图片类型
+func IsImgType(ext string) (value string, ok bool) {
+	ext = strings.ToLower(ext)
+	value, ok = imgType[ext]
+	return value, ok
 }
 
 // HandleNcPostUploadPicture 处理上传图片逻辑
@@ -75,13 +103,13 @@ func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request
 		logs.Debug("request.FormFile succeed, h.Filename = %v", h.Filename)
 		// 限定文件格式
 		logs.Debug("ready to get fileType")
-		fileType, e := imgType.Get(h.Filename)
-		if e != nil {
-			logs.Error("not image format")
-			http.Error(writer, "not image format", http.StatusBadRequest)
+		// 获取文件扩展名 根据文件扩展名判断是否是图片
+		fileType, ok := IsImgType(path.Ext(h.Filename))
+		if ok == false {
+			logs.Error("upload file isn't imgType")
+			http.Error(writer, "upload file isn't imgType", http.StatusBadRequest)
 			return
 		}
-		logs.Debug("imgType.Get succeed, fileType = %v", fileType)
 
 		count := atomic.AddInt64(&atomicCount, 1)
 		fileName := time.Now().Format("20060102150405")
