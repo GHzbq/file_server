@@ -12,9 +12,9 @@ import (
 )
 
 const (
-	imagePath = "/home/work/project/file_server/img/"
 	//serverBase = "http://47.102.208.185:9653"
 	serverBase = "http://127.0.0.1:9653"
+	imagePath = "/home/zhangbaqing/all/project/file_server/img/"
 )
 
 var (
@@ -56,12 +56,14 @@ func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request
 	// 解决跨域问题
 	writer.Header().Set("Access-Control-Allow-Origin", "*")             //允许访问所有域
 	writer.Header().Add("Access-Control-Allow-Headers", "Content-Type") //header的类型
+	logs.Debug("get a new request, request.Method = %v", request.Method)
 	e := request.ParseForm()
 	if e != nil {
 		logs.Error("request.ParseForm failed, error = %v", e.Error())
 		http.Error(writer, "parse form failed", http.StatusInternalServerError)
 		return
 	}
+	logs.Debug("request.ParseForm succeed")
 	if request.Method == "POST" {
 		f, h, e := request.FormFile("filename")
 		if e != nil {
@@ -70,13 +72,16 @@ func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request
 			return
 		}
 		defer f.Close()
+		logs.Debug("request.FormFile succeed, h.Filename = %v", h.Filename)
 		// 限定文件格式
+		logs.Debug("ready to get fileType")
 		fileType, e := imgType.Get(h.Filename)
 		if e != nil {
 			logs.Error("not image format")
 			http.Error(writer, "not image format", http.StatusBadRequest)
 			return
 		}
+		logs.Debug("imgType.Get succeed, fileType = %v", fileType)
 
 		count := atomic.AddInt64(&atomicCount, 1)
 		fileName := time.Now().Format("20060102150405")
@@ -90,6 +95,8 @@ func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request
 			logs.Error("os.Create failed, error = %v", e.Error())
 			http.Error(writer, "create file failed", http.StatusInternalServerError)
 			return
+		} else {
+			logs.Debug("os.Create succeed, filePath = %v", filePath)
 		}
 		defer file.Close()
 		_, e = io.Copy(file, f)
@@ -100,7 +107,7 @@ func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request
 		}
 		_, e = io.WriteString(writer, fileURL)
 		if e != nil {
-			http.Error(writer, "create file failed", http.StatusInternalServerError)
+			http.Error(writer, "write fileURL failed", http.StatusInternalServerError)
 			return
 		}
 		http.Redirect(writer, request, fileURL, http.StatusFound) // 302
@@ -116,12 +123,14 @@ func HandleNcPostUploadPicture(writer http.ResponseWriter, request *http.Request
 func HandleNcGetGetPicture(writer http.ResponseWriter, request *http.Request) {
 	writer.Header().Set("Access-Control-Allow-Origin", "*")             //允许访问所有域
 	writer.Header().Add("Access-Control-Allow-Headers", "Content-Type") //header的类型
+	logs.Debug("get a new request, method = %v", request.Method)
 	e := request.ParseForm()
 	if e != nil {
 		logs.Error("request.ParseForm failed, error = %v", e.Error())
 		http.Error(writer, "parse form failed", http.StatusInternalServerError)
 		return
 	}
+	logs.Debug("request.ParseForm succeed")
 	if request.Method == "GET" {
 		fileName := request.FormValue("id")
 		if fileName == "" {
