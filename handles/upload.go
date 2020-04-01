@@ -13,7 +13,8 @@ import (
 
 const (
 	imagePath = "/home/work/project/file_server/img/"
-	serverBase = "http://47.102.208.185:9653"
+	//serverBase = "http://47.102.208.185:9653"
+	serverBase = "http://127.0.0.1:9653"
 )
 
 var (
