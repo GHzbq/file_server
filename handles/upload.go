@@ -181,7 +181,7 @@ func HandleNcGetGetPicture(writer http.ResponseWriter, request *http.Request) {
 		}
 
 		writer.Header().Set("Content-Type", "image")
-		http.ServeFile(writer, request, imagePath)
+		http.ServeFile(writer, request, filePath)
 	} else {
 		logs.Debug("unsupported method, request.Method = %v", request.Method)
 		http.Error(writer, "unsupported method", http.StatusBadRequest)
